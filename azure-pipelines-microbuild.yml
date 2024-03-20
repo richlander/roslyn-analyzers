@@ -44,12 +44,12 @@ extends:
       displayName: Build
       jobs:
       - ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/main') }}:
-        - template: /eng/common/templates/job/onelocbuild.yml@self
+        - template: /eng/common/templates-official/job/onelocbuild.yml@self
           parameters:
             MirrorRepo: roslyn-analyzers
             LclSource: lclFilesfromPackage
             LclPackageId: 'LCL-JUNO-PROD-ROSANLZR'
-      - template: /eng/common/templates/jobs/jobs.yml@self
+      - template: /eng/common/templates-official/jobs/jobs.yml@self
         parameters:
           enableMicrobuild: true
           enablePublishBuildArtifacts: true
@@ -74,12 +74,16 @@ extends:
               clean: true
             - script: eng\common\CIBuild.cmd -configuration $(_BuildConfig) /p:OfficialBuildId=$(BUILD.BUILDNUMBER) /p:DotNetSignType=$(_SignType) /p:DotnetPublishUsingPipelines=true
               displayName: Build and Test
+
+              # Archive NuGet packages to DevOps.
             - task: PublishBuildArtifacts@1
               displayName: Publish Artifact Packages
               inputs:
                 PathtoPublish: 'artifacts\packages\$(_BuildConfig)'
                 ArtifactName: 'Packages'
               condition: succeeded()
+
+              # Archive VSIX packages to DevOps.
             - task: PublishBuildArtifacts@1
               displayName: Publish Artifact VSIXes
               inputs:
@@ -96,10 +100,13 @@ extends:
         displayName: CodeQL
         timeoutInMinutes: 120
         variables:
+          # CG is handled in the primary CI pipeline
         - name: skipComponentGovernanceDetection
           value: true
+          # Force CodeQL enabled so it may be run on any branch
         - name: Codeql.Enabled
           value: true
+          # Do not let CodeQL 3000 Extension gate scan frequency
         - name: Codeql.Cadence
           value: 0
         - name: Codeql.TSAEnabled
@@ -111,7 +118,7 @@ extends:
           displayName: Windows Build
         - task: CodeQL3000Finalize@0
           displayName: CodeQL Finalize
-    - template: /eng/common/templates/post-build/post-build.yml@self
+    - template: /eng/common/templates-official/post-build/post-build.yml@self
       parameters:
         publishingInfraVersion: 3
         enableSymbolValidation: false
