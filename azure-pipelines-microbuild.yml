@@ -1,10 +1,10 @@
 parameters:
-  # Optionally do not publish to TSA. Useful for e.g. verifying fixes before PR.
+  # Optionally do not publish to TSA. Useful for e.g., verifying fixes before PR.
 - name: TSAEnabled
   displayName: Publish results to TSA
   type: boolean
   default: true
-  
+
 # Branches that trigger a build on commit
 trigger:
 - main
@@ -19,12 +19,14 @@ variables:
 - group: DotNet-Symbol-Server-Pats
 - group: DotNet-Versions-Publish
 - group: ManagedLanguageSecrets
+
 resources:
   repositories:
   - repository: MicroBuildTemplate
     type: git
     name: 1ESPipelineTemplates/MicroBuildTemplate
     ref: refs/tags/release
+
 extends:
   template: azure-pipelines/MicroBuild.1ES.Official.yml@MicroBuildTemplate
   parameters:
@@ -74,22 +76,17 @@ extends:
               clean: true
             - script: eng\common\CIBuild.cmd -configuration $(_BuildConfig) /p:OfficialBuildId=$(BUILD.BUILDNUMBER) /p:DotNetSignType=$(_SignType) /p:DotnetPublishUsingPipelines=true
               displayName: Build and Test
-
+            templateContext:
+              outputs:
               # Archive NuGet packages to DevOps.
-            - task: PublishBuildArtifacts@1
-              displayName: Publish Artifact Packages
-              inputs:
-                PathtoPublish: 'artifacts\packages\$(_BuildConfig)'
-                ArtifactName: 'Packages'
-              condition: succeeded()
-
+              - output: pipelineArtifact
+                path: $(Build.ArtifactStagingDirectory)/packages/$(BuildConfig)
+                artifact: Packages
               # Archive VSIX packages to DevOps.
-            - task: PublishBuildArtifacts@1
-              displayName: Publish Artifact VSIXes
-              inputs:
-                PathtoPublish: 'artifacts\VSSetup\$(_BuildConfig)'
-                ArtifactName: 'VSIXes'
-              condition: succeeded()
+              - output: pipelineArtifact
+                path: $(Build.ArtifactStagingDirectory)/VSSetup/$(BuildConfig)
+                artifact: VSIXes
+
     - stage: analysis
       displayName: Code analysis
       pool:
@@ -100,13 +97,13 @@ extends:
         displayName: CodeQL
         timeoutInMinutes: 120
         variables:
-          # CG is handled in the primary CI pipeline
+        # CG is handled in the primary CI pipeline
         - name: skipComponentGovernanceDetection
           value: true
-          # Force CodeQL enabled so it may be run on any branch
+        # Force CodeQL enabled so it may be run on any branch
         - name: Codeql.Enabled
           value: true
-          # Do not let CodeQL 3000 Extension gate scan frequency
+        # Do not let CodeQL 3000 Extension gate scan frequency
         - name: Codeql.Cadence
           value: 0
         - name: Codeql.TSAEnabled
@@ -117,11 +114,3 @@ extends:
         - script: eng\common\cibuild.cmd -configuration Release -prepareMachine /p:Test=false
           displayName: Windows Build
         - task: CodeQL3000Finalize@0
-          displayName: CodeQL Finalize
-    - template: /eng/common/templates-official/post-build/post-build.yml@self
-      parameters:
-        publishingInfraVersion: 3
-        enableSymbolValidation: false
-        enableSigningValidation: false
-        enableSourceLinkValidation: false
-        enableNugetValidation: false
